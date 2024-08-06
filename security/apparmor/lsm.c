@@ -110,12 +110,12 @@ static int apparmor_ptrace_access_check(struct task_struct *child,
 	struct aa_label *tracer, *tracee;
 	int error;
 
-	tracer = __begin_current_label_crit_section();
+	tracer = begin_current_label_crit_section();
 	tracee = aa_get_task_label(child);
 	error = aa_may_ptrace(tracer, tracee,
 		  mode == PTRACE_MODE_READ ? AA_PTRACE_READ : AA_PTRACE_TRACE);
 	aa_put_label(tracee);
-	__end_current_label_crit_section(tracer);
+	end_current_label_crit_section(tracer);
 
 	return error;
 }
@@ -125,11 +125,11 @@ static int apparmor_ptrace_traceme(struct task_struct *parent)
 	struct aa_label *tracer, *tracee;
 	int error;
 
-	tracee = __begin_current_label_crit_section();
+	tracee = begin_current_label_crit_section();
 	tracer = aa_get_task_label(parent);
 	error = aa_may_ptrace(tracer, tracee, AA_PTRACE_TRACE);
 	aa_put_label(tracer);
-	__end_current_label_crit_section(tracee);
+	end_current_label_crit_section(tracee);
 
 	return error;
 }
@@ -807,7 +807,7 @@ static int apparmor_unix_stream_connect(struct sock *sk, struct sock *peer_sk,
 	struct path *path;
 	int error;
 
-		label = __begin_current_label_crit_section();
+	label = __begin_current_label_crit_section();
 	error = aa_unix_peer_perm(label, OP_CONNECT,
 				(AA_MAY_CONNECT | AA_MAY_SEND | AA_MAY_RECEIVE),
 				  sk, peer_sk, NULL);
@@ -873,7 +873,6 @@ static int apparmor_unix_may_send(struct socket *sock, struct socket *peer)
 
 	return error;
 }
-
 
 /**
  * apparmor_socket_create - check perms before creating a new socket
@@ -958,17 +957,6 @@ static int apparmor_socket_listen(struct socket *sock, int backlog)
  *       has not been done.
  */
 static int apparmor_socket_accept(struct socket *sock, struct socket *newsock)
-{
-	AA_BUG(!sock);
-	AA_BUG(!sock->sk);
-	AA_BUG(!newsock);
-	AA_BUG(in_interrupt());
-
-	return aa_sk_perm(OP_ACCEPT, AA_MAY_ACCEPT, sock->sk);
-}
-
-static int aa_sock_msg_perm(const char *op, u32 request, struct socket *sock,
-			    struct msghdr *msg, int size)
 {
 	return aa_sock_accept_perm(sock, newsock);
 }
@@ -1056,6 +1044,7 @@ static struct aa_label *sk_peer_label(struct sock *sk)
 
 	if (ctx->peer)
 		return ctx->peer;
+
 	if (sk->sk_family != PF_UNIX)
 		return ERR_PTR(-ENOPROTOOPT);
 
@@ -1068,7 +1057,7 @@ static struct aa_label *sk_peer_label(struct sock *sk)
 		if (ctx->label)
 			return ctx->label;
 	}
-	
+
 	return ERR_PTR(-ENOPROTOOPT);
 }
 
@@ -1191,7 +1180,7 @@ static struct security_hook_list apparmor_hooks[] __lsm_ro_after_init = {
 	LSM_HOOK_INIT(sk_alloc_security, apparmor_sk_alloc_security),
 	LSM_HOOK_INIT(sk_free_security, apparmor_sk_free_security),
 	LSM_HOOK_INIT(sk_clone_security, apparmor_sk_clone_security),
-	
+
 	LSM_HOOK_INIT(unix_stream_connect, apparmor_unix_stream_connect),
 	LSM_HOOK_INIT(unix_may_send, apparmor_unix_may_send),
 
