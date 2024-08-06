@@ -21,6 +21,7 @@
 #include "include/context.h"
 #include "include/file.h"
 #include "include/match.h"
+#include "include/net.h"
 #include "include/path.h"
 #include "include/policy.h"
 #include "include/label.h"
@@ -609,7 +610,9 @@ int aa_file_perm(const char *op, struct aa_label *label, struct file *file,
 	if (file->f_path.mnt && path_mediated_fs(file->f_path.dentry))
 		error = __file_path_perm(op, label, flabel, file, request,
 					 denied);
-
+	else if (S_ISSOCK(file_inode(file)->i_mode))
+		error = __file_sock_perm(op, label, flabel, file, request,
+					 denied);
 done:
 	rcu_read_unlock();
 
